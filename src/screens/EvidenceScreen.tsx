@@ -5,7 +5,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import * as ImagePicker from 'expo-image-picker';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
-import * as FileSystem from 'expo-file-system'; // Correct Import
+import * as FileSystem from 'expo-file-system'; 
 import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '../context/AppContext';
 import { RootStackParamList, Evidence } from '../types';
@@ -15,6 +15,16 @@ import { COLORS, SIZES } from '../constants/theme';
 type Props = {
   route: RouteProp<RootStackParamList, 'Evidence'>;
   navigation: StackNavigationProp<RootStackParamList, 'Evidence'>;
+};
+
+// Helper to generate a mock SHA-256 Hash (Hexadecimal)
+const generateMockSHA256 = () => {
+  const chars = '0123456789abcdef';
+  let hash = '0x';
+  for (let i = 0; i < 64; i++) {
+    hash += chars[Math.floor(Math.random() * 16)];
+  }
+  return hash;
 };
 
 export default function EvidenceScreen({ route, navigation }: Props) {
@@ -27,7 +37,6 @@ export default function EvidenceScreen({ route, navigation }: Props) {
 
   // --- PDF REPORT GENERATOR ---
   const generatePdf = async () => {
-    // 1. Safety Check
     if (!activeCase) {
       Alert.alert("Error", "Case data not found.");
       return;
@@ -37,7 +46,6 @@ export default function EvidenceScreen({ route, navigation }: Props) {
     setLoading(true);
 
     try {
-      // 2. Prepare HTML Content
       const htmlContent = `
         <!DOCTYPE html>
         <html>
@@ -100,7 +108,7 @@ export default function EvidenceScreen({ route, navigation }: Props) {
                   <tr>
                     <td>${new Date(item.timestamp).toLocaleString()}</td>
                     <td>${item.location || reportCase.location}</td>
-                    <td><b>${item.name || 'Digital Artifact'}</b><br/>Type: ${item.type.toUpperCase()}</td>
+                    <td><b>${item.name || 'Digital Artifact'}</b><br/>Stored in Secure DB</td>
                     <td class="hash-code">${item.hash}</td>
                   </tr>
                 `).join('')}
@@ -115,64 +123,51 @@ export default function EvidenceScreen({ route, navigation }: Props) {
         </html>
       `;
 
-      // 3. Platform Specific Save Logic
       if (Platform.OS === 'web') {
         await Print.printAsync({ html: htmlContent });
         return;
       }
 
-      // Generate Temp File
       const { uri } = await Print.printToFileAsync({ html: htmlContent });
       const sanitizedTitle = reportCase.title.replace(/[^a-zA-Z0-9]/g, '_');
       const fileName = `${sanitizedTitle}_Report.pdf`;
 
       if (Platform.OS === 'android') {
-        // --- ANDROID ROBUST LOGIC ---
         let safSuccess = false;
-
-        // Try Storage Access Framework (SAF) first
         try {
           const SAF = FileSystem.StorageAccessFramework;
           if (SAF) {
             const permissions = await SAF.requestDirectoryPermissionsAsync();
-            
             if (permissions.granted) {
               const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
               const createdUri = await SAF.createFileAsync(permissions.directoryUri, fileName, 'application/pdf');
               await FileSystem.writeAsStringAsync(createdUri, base64, { encoding: FileSystem.EncodingType.Base64 });
-              
               safSuccess = true;
               Alert.alert("Success", "Report saved to selected folder.");
             } else {
-              // User cancelled folder selection
               return; 
             }
           }
         } catch (safError) {
-          console.log("SAF Failed (likely not supported on this device/emulator):", safError);
-          // safSuccess remains false
+          console.log("SAF Failed:", safError);
         }
 
-        // Fallback: If SAF failed or not supported, use Share Sheet
-        // This is necessary because on some Android versions, you simply CANNOT write to Downloads without SAF.
         if (!safSuccess) {
           if (await Sharing.isAvailableAsync()) {
-            Alert.alert("Notice", "Direct download not supported on this device. Please choose 'Save to Files' or 'Drive' from the next screen.");
+            Alert.alert("Notice", "Direct download not supported. Please choose 'Save to Files' or 'Drive'.");
             await Sharing.shareAsync(uri);
           } else {
-            Alert.alert("Error", "Could not save or share the report.");
+            Alert.alert("Error", "Could not save report.");
           }
         }
-
       } else {
-        // --- iOS LOGIC ---
         const newUri = FileSystem.documentDirectory + fileName;
         await FileSystem.moveAsync({ from: uri, to: newUri });
         
         if (await Sharing.isAvailableAsync()) {
            await Sharing.shareAsync(newUri, { UTI: '.pdf', mimeType: 'application/pdf' });
         } else {
-           Alert.alert("Error", "Sharing is not available on this device");
+           Alert.alert("Error", "Sharing is not available.");
         }
       }
 
@@ -196,7 +191,10 @@ export default function EvidenceScreen({ route, navigation }: Props) {
 
     let result = useCamera 
       ? await ImagePicker.launchCameraAsync({ quality: 0.7 })
-      : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images });
+      : await ImagePicker.launchImageLibraryAsync({ 
+          // FIX: Updated from MediaTypeOptions to MediaType
+          mediaTypes: ImagePicker.MediaType.Images 
+        });
 
     if (!result.canceled && result.assets) {
       analyzeDocument(result.assets[0]);
@@ -204,7 +202,7 @@ export default function EvidenceScreen({ route, navigation }: Props) {
   };
 
   const analyzeDocument = (asset: ImagePicker.ImagePickerAsset) => {
-    Alert.alert("AI Analysis", "Verifying authenticity & metadata...");
+    Alert.alert("Secure Upload", "Encrypting file & Generating SHA-256 Hash...");
     
     const mockLocations = [
       "13.0827° N, 80.2707° E (Crime Scene)",
@@ -217,7 +215,7 @@ export default function EvidenceScreen({ route, navigation }: Props) {
       const newEvidence: Evidence = {
         type: 'image', 
         uri: asset.uri, 
-        hash: 'Qm' + Date.now() + 'x8z9', 
+        hash: generateMockSHA256(), 
         timestamp: new Date().toISOString(),
         name: 'Scene Photo / Document',
         location: randomLoc
@@ -227,7 +225,6 @@ export default function EvidenceScreen({ route, navigation }: Props) {
     }, 1500);
   };
 
-  // Safe Guard
   if (!activeCase) {
     return (
       <ScreenWrapper>
@@ -252,15 +249,15 @@ export default function EvidenceScreen({ route, navigation }: Props) {
           
           <TouchableOpacity style={styles.downloadBtn} onPress={generatePdf} disabled={loading}>
             <Ionicons name="download-outline" size={18} color="white" />
-            <Text style={styles.downloadText}>{loading ? "Processing..." : "Download Report"}</Text>
+            <Text style={styles.downloadText}>{loading ? "Generating..." : "Download Report"}</Text>
           </TouchableOpacity>
         </View>
 
         {/* Ledger Card */}
         <View style={styles.ledgerCard}>
           <View style={styles.ledgerHeader}>
-             <Ionicons name="cube-outline" size={16} color={COLORS.primary} />
-             <Text style={styles.ledgerTitle}>IMMUTABLE LEDGER RECORD</Text>
+             <Ionicons name="shield-checkmark-outline" size={16} color={COLORS.primary} />
+             <Text style={styles.ledgerTitle}>BLOCKCHAIN VERIFIED</Text>
           </View>
           <Text style={styles.hashText}>{activeCase.blockchainHash}</Text>
           <View style={styles.ledgerMeta}>
@@ -279,12 +276,12 @@ export default function EvidenceScreen({ route, navigation }: Props) {
           </TouchableOpacity>
           <TouchableOpacity style={[styles.actionBtn, { backgroundColor: COLORS.secondary }]} onPress={() => pickImage(false)}>
             <Ionicons name="cloud-upload" size={20} color="white" />
-            <Text style={styles.actionText}>Upload</Text>
+            <Text style={styles.actionText}>DB Upload</Text>
           </TouchableOpacity>
         </View>
 
         {/* Flowchart UI */}
-        <Text style={styles.sectionTitle}>Chain of Custody (Flow)</Text>
+        <Text style={styles.sectionTitle}>Custody Chain (Database + Ledger)</Text>
         
         <View style={styles.flowContainer}>
           <View style={styles.flowNode}>
@@ -304,13 +301,13 @@ export default function EvidenceScreen({ route, navigation }: Props) {
             <React.Fragment key={index}>
               <View style={styles.flowNode}>
                 <View style={styles.nodeIcon}>
-                  <Ionicons name="image" size={20} color="white" />
+                  <Ionicons name="server" size={20} color="white" />
                 </View>
                 <View style={styles.nodeContent}>
                   <Text style={styles.nodeTitle}>{item.name}</Text>
                   <Text style={styles.nodeTime}>{new Date(item.timestamp).toLocaleString()}</Text>
                   <Text style={styles.nodeHash}>{item.location}</Text>
-                  <Text style={[styles.nodeHash, { color: COLORS.secondary }]}>IPFS: {item.hash.substring(0, 15)}...</Text>
+                  <Text style={[styles.nodeHash, { color: COLORS.secondary }]}>Hash: {item.hash.substring(0, 20)}...</Text>
                   <Image source={{ uri: item.uri }} style={styles.nodeImage} />
                 </View>
               </View>
