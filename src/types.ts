@@ -1,8 +1,10 @@
+// src/types.ts
+
 export interface User {
   id: string;
   name: string;
   email: string;
-  role: 'investigator' | 'forensics' | 'admin'; // Added Admin
+  role: 'investigator' | 'forensics' | 'admin';
   password?: string;
 }
 
@@ -12,6 +14,7 @@ export interface Evidence {
   hash: string;
   timestamp: string;
   name?: string;
+  location?: string; // <--- THIS MUST BE HERE
 }
 
 export interface Case {
