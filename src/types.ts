@@ -2,8 +2,8 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  role: 'investigator' | 'forensics';
-  password?: string; // New Field
+  role: 'investigator' | 'forensics' | 'admin'; // Added Admin
+  password?: string;
 }
 
 export interface Evidence {

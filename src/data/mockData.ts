@@ -6,14 +6,21 @@ export const USERS: User[] = [
     name: 'Nikhil Ganesh', 
     role: 'investigator', 
     email: 'nikhil@police.tn.gov',
-    password: 'password123' // Added Password
+    password: 'password123'
   },
   { 
     id: 'u2', 
     name: 'Dr. Kavitha', 
     role: 'forensics', 
     email: 'kavitha@lab.tn.gov',
-    password: 'password123' // Added Password
+    password: 'password123'
+  },
+  { 
+    id: 'admin1', 
+    name: 'Superintendent (Admin)', 
+    role: 'admin', 
+    email: 'admin@police.tn.gov',
+    password: 'adminpassword'
   }
 ];
 
