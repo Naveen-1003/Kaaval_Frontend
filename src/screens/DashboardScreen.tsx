@@ -19,14 +19,19 @@ export default function DashboardScreen({ navigation }: { navigation: DashboardP
 
   const renderHeader = () => (
     <View>
-      {/* Top Bar */}
+      {/* --- RESPONSIVE HEADER FIX --- */}
       <View style={styles.header}>
-        <View>
-          <Text style={styles.greeting}>Welcome, {user?.name}</Text>
+        <View style={styles.headerTextContainer}>
+          {/* Removed numberOfLines so full name wraps to next line if needed */}
+          <Text style={styles.greeting}>
+            Welcome, {user?.name}
+          </Text>
           <Text style={styles.userRole}>{user?.role.toUpperCase()} • TN POLICE</Text>
         </View>
+        
+        {/* flexShrink: 0 ensures button never gets squashed */}
         <TouchableOpacity onPress={() => navigation.replace('Auth')} style={styles.logoutBtn}>
-          <Ionicons name="log-out-outline" size={20} color={COLORS.danger} />
+          <Ionicons name="log-out-outline" size={22} color={COLORS.danger} />
         </TouchableOpacity>
       </View>
 
@@ -111,10 +116,38 @@ export default function DashboardScreen({ navigation }: { navigation: DashboardP
 }
 
 const styles = StyleSheet.create({
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
-  greeting: { fontSize: SIZES.h2, fontWeight: 'bold', color: COLORS.text },
-  userRole: { color: COLORS.textDim, fontSize: 12, letterSpacing: 1, marginTop: 4 },
-  logoutBtn: { padding: 8, backgroundColor: 'rgba(239, 68, 68, 0.1)', borderRadius: 8 },
+  header: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', // Centers button vertically if name wraps to 2 lines
+    marginBottom: 24,
+    width: '100%'
+  },
+  headerTextContainer: {
+    flex: 1, // Takes all available space
+    paddingRight: 15, // Adds buffer so text doesn't touch the button
+  },
+  greeting: { 
+    fontSize: SIZES.h2, 
+    fontWeight: 'bold', 
+    color: COLORS.text,
+    flexWrap: 'wrap', // Allows text to wrap to next line
+  },
+  userRole: { 
+    color: COLORS.textDim, 
+    fontSize: 12, 
+    letterSpacing: 1, 
+    marginTop: 4 
+  },
+  logoutBtn: { 
+    flexShrink: 0, // Crucial: Prevents button from shrinking
+    padding: 10, 
+    backgroundColor: 'rgba(239, 68, 68, 0.15)', 
+    borderRadius: 10,
+    minWidth: 44,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
   statsRow: { flexDirection: 'row', gap: 15, marginBottom: 20 },
   adminStatsRow: { flexDirection: 'row', gap: 15, marginBottom: 15, paddingBottom: 15, borderBottomWidth: 1, borderBottomColor: COLORS.border },
   statCard: { flex: 1, backgroundColor: COLORS.card, padding: 20, borderRadius: SIZES.radius, alignItems: 'center', justifyContent: 'center' },
